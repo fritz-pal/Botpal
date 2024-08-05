@@ -66,7 +66,7 @@ bot = commands.Bot(
     client_id=twitch_client_id,
     nick='fritzbotpal',
     prefix='!',
-    initial_channels=["fritzpal", "lordzaros_", "haplolp", "klonoaofthewind", "2oleh2"]
+    initial_channels=["fritzpal"]
 )
 
 # variables
@@ -281,8 +281,7 @@ async def answer_question(message):
         print("original: " + unchanged)
     await message.channel.send(send)
     
-    
-# authenticate with spotify
+# environment variables for spotify
 load_dotenv()
 idSpotify = os.getenv("SPOTIFY_CLIENT_ID")
 secretSpotify = os.getenv("SPOTIFY_CLIENT_SECRET")
@@ -290,6 +289,7 @@ secretSpotify = os.getenv("SPOTIFY_CLIENT_SECRET")
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 
+# links for spotify
 redirect_uri = "https://localhost:3000/callback"
 auth_url = "https://accounts.spotify.com/authorize"
 token_url = "https://accounts.spotify.com/api/token"
@@ -298,8 +298,7 @@ api_base_url = "https://api.spotify.com/v1"
 token_info = None
 expires_at = 0
 
-playlist_id = "6hxaRq6WflNyrwDVcVwCFj"
-
+# create the spotify oauth object
 def create_spotify_oauth():
     return SpotifyOAuth(
         client_id=idSpotify,
@@ -308,6 +307,7 @@ def create_spotify_oauth():
         scope="user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-playback-position user-read-recently-played user-top-read user-read-playback-position user-read-private user-read-email user-library-read user-library-modify playlist-read-private playlist-modify-public playlist-modify-private playlist-read-collaborative user-follow-read user-follow-modify user-read-recently-played",
     )
 
+# authentication sites for spotify oauth
 @app.route("/")
 def index():
     return "Mit Spotify <a href='/login'>einloggen</a>"
@@ -330,6 +330,7 @@ def callback():
     expires_at = int(time.time()) + token_info["expires_in"]
     return redirect("/success")
 
+# fuctions to get spotipy object
 def get_spotify():
     global token_info
     if not token_info:
@@ -343,29 +344,36 @@ def get_spotify():
 
     return spotipy.Spotify(auth=token_info["access_token"])
 
+# returns the device id of the first device of the user
 def get_device():
     return get_spotify().devices()["devices"][0]["id"]
 
+# returns the currently playing song or that nothing is playing
 def get_currently_playing():
     playback = get_spotify().current_playback()
     if not playback:
         return getTranslation("noSong")
     return playback["item"]["name"] + " - " + playback["item"]["artists"][0]["name"]
 
+# add a song to the queue by uri
 def add_track_to_queue(track_uri):
     get_spotify().add_to_queue(track_uri)
     return 
 
+# search for a song by query
 def get_search_results(query):
     return get_spotify().search(query, 2, 0, "track")
 
+# get the info of a song by uri
 def get_song_info(track_uri):
     return get_spotify().track(track_uri)
 
+# skip the current song
 def skip_song():
     device_id = get_device()
     return get_spotify().next_track(device_id)
 
+# bot commands to get currently playing song
 @bot.command(name='song')
 async def song_command(ctx):
     if not token_info:
@@ -374,7 +382,8 @@ async def song_command(ctx):
     song = get_currently_playing()
     print(song)
     await ctx.send(song)
-    
+
+# bot command to request a song
 @bot.command(name='songrequest', aliases=['sr'])
 async def songrequest_command(ctx, *, song):
     global token_info
