@@ -1,5 +1,7 @@
 # This python program is a comprehensive implementation of a Twitch chatbot named Botpal, which integrates with various APIs, including OpenAI's GPT for AI responses and Spotify for music-related commands. The code is structured to handle environment variables, translations, Twitch commands, and Spotify OAuth authentication.
 
+(title made by botpal himself)
+
 to install:
  - install libraries using pip install
  - create .env file with all necessary environment variables in format:
