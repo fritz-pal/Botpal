@@ -8,12 +8,12 @@ to install:
 SPOTIFY_CLIENT_ID=""
 SPOTIFY_CLIENT_SECRET=""
 TWITCH_CLIENT_ID=""
-TWITCH_TOKEN="" created using the link in the comment at the top of the file
+TWITCH_TOKEN="" # created using the link in the comment at the top of the file
 TWITCH_CLIENT_SECRET=""
 
 FLASK_SECRET_KEY="" # random string
 
-AI_KEY0="" # api keys for an ai model
+AI_KEY0="" # api keys for aimlapi.com (5 because one of them can only process 10 requests per hour)
 AI_KEY1=""
 AI_KEY2=""
 AI_KEY3=""
