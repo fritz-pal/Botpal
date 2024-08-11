@@ -13,7 +13,7 @@ import threading
 import webbrowser
 from AnswersAI import answer_question
 
-# https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=chat%3Aread+chat%3Aedit+channel%3Amoderate+moderator%3Aread%3Afollowers+moderator%3Amanage%3Aannouncements+channel%3Aread%3Aredemptions+user%3Aread%3Afollows+moderator%3Aread%3Afollowers+channel%3Amanage%3Amoderators
+# https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=channel%3Abot+channel%3Amanage%3Amoderators+channel%3Amanage%3Aredemptions
 
 # get the environment variables
 load_dotenv()

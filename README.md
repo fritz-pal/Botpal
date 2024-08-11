@@ -3,7 +3,7 @@
 (title made by botpal himself)
 
 to install:
- - install libraries using pip install
+ - install libraries using "pip install -r requirements.txt"
  - create .env file with all necessary environment variables in format:
 
 ```
