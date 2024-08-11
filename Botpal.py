@@ -23,6 +23,7 @@ secretSpotify = os.getenv("SPOTIFY_CLIENT_SECRET")
 twitch_token = os.getenv("TWITCH_TOKEN")
 twitch_client_id = os.getenv("TWITCH_CLIENT_ID")
 twitch_client_secret = os.getenv("TWITCH_CLIENT_SECRET")
+reward_id = os.getenv("REWARD_ID")
 
 # variables
 klonoa = 0
@@ -391,14 +392,15 @@ def get_redemptions(channel, reward_id):
         return []
     
 # create reward
-def create_custom_reward(channel, title, cost):
+def create_custom_reward(channel):
     data = {
-        "title": title,
-        "cost": cost,
-        "prompt": "Requeste einen Song mit einem Link oder dem Namen des Songs",
+        "title": "Botpal-Songrequest",
+        "cost": 1,
+        "prompt": "Requeste einen Song mit einem Spotify-Link oder dem Namen des Songs",
         "is_enabled": True,
         "background_color": "#1e90ff",
         "is_user_input_required": True,
+        "should_redemptions_skip_request_queue": True
     }
     response = requests.post("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" + channel_ids[channel], headers=get_twitch_client_headers(channel), json=data)
     if response.status_code == 200:
@@ -406,15 +408,31 @@ def create_custom_reward(channel, title, cost):
     else:
         print("Error:", response)
         return None
+    
+# delete reward
+def delete_custom_reward(channel, reward_id):
+    response = requests.delete("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" + channel_ids[channel] + "&id=" + reward_id, headers=get_twitch_client_headers(channel))
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Error:", response)
+        return None
 
-# bot command to print redemptions
+# bot command rewards
 @bot.command(name='rewards')
 async def rewards_command(ctx):
     if ctx.author.name != "fritzpal":
         return
-    rewards = get_redemptions(ctx.author.channel.name, "5de133f6-8928-48cc-ba88-1515c16437bf")
-    print(rewards)
-
+    rewards = get_custom_rewards(ctx.author.channel.name)
+    if not rewards:
+        await ctx.send("/me no rewards")
+        return
+    msg = "/me Rewards: "
+    for reward in rewards:
+        msg += reward["title"] + " - " + str(reward["cost"]) + " -> "
+    msg = msg[:-4]
+    await ctx.send(msg)
+    
 # bot command to see mods
 @bot.command(name='mods')
 async def mods_command(ctx):
@@ -423,7 +441,6 @@ async def mods_command(ctx):
         await ctx.send("/me no mods")
         return
     await ctx.send("/me Mods: " + ", ".join(mods))  
-
 
 # bot commands to get currently playing song
 @bot.command(name='song')
@@ -518,8 +535,9 @@ def is_mod(raw_data):
 # parse raw data and return if the message is a redemption of the songrequest reward
 def is_redemption(raw_data):
     attributes = raw_data.split(";")
+    global reward_id
     for attribute in attributes:
-        if "custom-reward-id=5de133f6-8928-48cc-ba88-1515c16437bf" == attribute:
+        if "custom-reward-id=" + reward_id == attribute:
             return True
     return False
 
