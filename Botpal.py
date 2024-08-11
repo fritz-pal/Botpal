@@ -1,17 +1,19 @@
 from dotenv import load_dotenv
 import os
 from twitchio.ext import commands
+from twitchio import Message
 import time
 import re
 import random
 import requests
-import openai
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from flask import Flask, redirect, request, jsonify, session
 import threading
+import webbrowser
+from AnswersAI import answer_question
 
-# https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=chat%3Aread+chat%3Aedit+channel%3Amoderate+moderator%3Aread%3Afollowers+moderator%3Amanage%3Aannouncements+channel%3Aread%3Aredemptions+user%3Aread%3Afollows+moderator%3Aread%3Afollowers
+# https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=chat%3Aread+chat%3Aedit+channel%3Amoderate+moderator%3Aread%3Afollowers+moderator%3Amanage%3Aannouncements+channel%3Aread%3Aredemptions+user%3Aread%3Afollows+moderator%3Aread%3Afollowers+channel%3Amanage%3Amoderators
 
 # get the environment variables
 load_dotenv()
@@ -22,11 +24,20 @@ twitch_token = os.getenv("TWITCH_TOKEN")
 twitch_client_id = os.getenv("TWITCH_CLIENT_ID")
 twitch_client_secret = os.getenv("TWITCH_CLIENT_SECRET")
 
-ai_api_keys = [os.getenv("AI_KEY0"), os.getenv("AI_KEY1"), os.getenv("AI_KEY2"), os.getenv("AI_KEY3"), os.getenv("AI_KEY4")]
-current_key = 0
+# variables
+klonoa = 0
+deaths = 0
+whoWantsSkip = []
+whenSkip = 0
+listOfIms = ["ich bin ein ", "i'm a ", "i am an ", "i am the ", "ich bin der ", "i'm the ", "im the ", "i am the ", "ich bin die ", "i bims der ", "i bims ", "ich heiße ", "i'm called ", "i'm named ", "i'm known as ", "mein name ist ", "i am ", "ich bin ", "i'm "]
+regex_pattern = "|".join(map(re.escape, listOfIms))
+channels = ["fritzpal", "klonoaofthewind", "haplolp", "lordzaros_"]
+twitch_client_tokens = {"fritzpal": os.getenv("TWITCH_TOKEN_FRITZPAL"), "lordzaros_": os.getenv("TWITCH_TOKEN_ZAROS")}
+channel_ids = {}
+language = "de"
+blacklist = []
 
 # translations
-language = "de"
 def getTranslation(key):
     translationsDE = {
         "stink": " stinkt!",
@@ -39,7 +50,9 @@ def getTranslation(key):
         "systemPrompt2": " und der Zuschauer ",
         "systemPrompt3": " stellt dir eine Frage.",
         "allGood": "Mir geht es gut, danke der Nachfrage. Wie geht es dir ",
-        "noSong": "Es wird gerade kein Song abgespielt."
+        "noSong": "Es wird gerade kein Song abgespielt.",
+        "queue": "Die nächsten Songs sind",
+        "skip": " möchte den Song skippen. "
     }
     translationsEN = {
         "stink": " smells!",
@@ -52,7 +65,9 @@ def getTranslation(key):
         "systemPrompt2": " and the viewer ",
         "systemPrompt3": " asks you a question.",
         "allGood": "I am fine, thank you for asking. How are you ",
-        "noSong": "Nothing is playing"
+        "noSong": "Nothing is playing",
+        "queue": "The next songs are",
+        "skip": " wants to skip the song. "
     }
     
     if language == "de":
@@ -66,14 +81,25 @@ bot = commands.Bot(
     client_id=twitch_client_id,
     nick='fritzbotpal',
     prefix='!',
-    initial_channels=["fritzpal"]
+    initial_channels=channels
 )
 
-# variables
-klonoa = 0
-deaths = 0
-listOfIms = ["ich bin ein ", "i'm a ", "i am an ", "i am the ", "ich bin der ", "i'm the ", "im the ", "i am the ", "ich bin die ", "i bims der ", "i bims ", "ich heiße ", "i'm called ", "i'm named ", "i'm known as ", "mein name ist ", "i am ", "ich bin ", "i'm "]
-regex_pattern = "|".join(map(re.escape, listOfIms))
+# get twitch api headers
+def get_twitch_headers():
+    return {
+        "Client-ID": twitch_client_id,
+        "Authorization": "Bearer " + twitch_token
+    }
+
+# get twitch client headers
+def get_twitch_client_headers(channel):
+    global twitch_client_tokens
+    if channel not in twitch_client_tokens:
+        return get_twitch_headers()
+    return {
+        "Client-ID": twitch_client_id,
+        "Authorization": "Bearer " + twitch_client_tokens[channel]
+    }
 
 # check if the message is a question
 def is_question(text):
@@ -83,15 +109,20 @@ def is_question(text):
 
 # event listener for chat messages
 @bot.event()
-async def event_message(message):
+async def event_message(message: Message):
     # ignore messages without author aka bot messages
     if not message.author:
         print("null: ", message.content)
         return
+    
+    if is_redemption(message.raw_data):
+        await process_redeem(message.content, message.channel)
+        return
+    
     print("chat:(" + message.author.channel.name + ") " + message.author.name,":", message.content)
     
     # 1% chance to tell someone they stink
-    if random.random() < 0.005:
+    if random.random() < 0.002:
         await message.channel.send("@" + message.author.name + getTranslation("stink"))
         
     # check if the message is a greeting and respond with troll
@@ -104,7 +135,7 @@ async def event_message(message):
 
     # check if the message is a question and respond with the AI
     if ("botpal" in message.content.lower() or "fritzbot" in message.content.lower()) and is_question(message.content.lower()):
-        await answer_question(message)
+        await answer_question(message, getTranslation, get_alertus)
     
     # check if klonoa is on the toilet and respond with the time
     global klonoa
@@ -128,7 +159,7 @@ async def test_command(ctx):
 def get_alertus(channel):
     if channel == "haplolp":
         return "haplolALERTUs"
-    if channel == "klonoaofthewind":
+    if channel == "klonoaofthewind" or channel == "b1gf1sch":
         return "ALERTUS"
     if channel == "fritzpal" or channel == "lordzaros_":
         return "ALERTUs"
@@ -141,6 +172,13 @@ async def pipi_command(ctx):
     if klonoa == 0:
         klonoa = time.time()
         await ctx.send("/me Klonoa muss aufs Klo " + get_alertus(ctx.author.channel.name))
+
+# command play
+@bot.command(name='play')
+async def play_command(ctx):
+    if ctx.author.name != "fritzpal":
+        return
+    await ctx.send("!play")
 
 # command elo
 @bot.command(name='elo')
@@ -173,7 +211,7 @@ async def elo_command(ctx, name=None):
 # command death 
 @bot.command(name='death')
 async def death_command(ctx, amount = None):
-    if ctx.author.channel.name != "blome17":
+    if ctx.author.channel.name != "blome17" and ctx.author.name != "fritzpal":
         return
     global deaths
     if amount:
@@ -198,88 +236,6 @@ async def api_key_command(ctx, key = None):
                 return
         await ctx.send(f"/me Changed api key to: {current_key}")
 
-# send request to AI API
-def chat_with_gpt(prompt, channel, user):
-    # create the client
-    client = openai.OpenAI(
-        api_key=ai_api_keys[current_key % len(ai_api_keys)],
-        base_url="https://api.aimlapi.com",
-    )
-    
-    # add the system prompt to the message
-    system_content = getTranslation("systemPrompt") + channel + " " + getTranslation("systemPrompt2") + user + getTranslation("systemPrompt3")
-
-    # retrieve the response from the AI
-    chat_completion = client.chat.completions.create(
-        model="mistralai/Mistral-7B-Instruct-v0.2",
-        messages=[
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=1.0,
-        max_tokens=128,
-    )
-
-    return chat_completion
-
-# answer the question of the given message using the AI
-async def answer_question(message):
-    # replace the bot name with Botpal
-    prompt = message.content.lower().replace("fritzbotpal", "Botpal").replace("fritzbot", "Botpal").replace("botpal", "Botpal").strip()
-    print("prompt: " + prompt)
-    try:
-        response = chat_with_gpt(prompt, message.author.channel.name, message.author.name)
-    except Exception as e:
-        # send error message if the AI is overloaded change the key
-        print("Error:", e)
-        if "429" in str(e):
-            global current_key
-            current_key += 1
-            print("key changed to: ", ai_api_keys[current_key % len(ai_api_keys)])
-        await message.channel.send(getTranslation("overloaded"))
-        return
-    
-    send = response.choices[0].message.content.strip()
-    unchanged = send
-    changed = False
-    
-    # strip botpal: from the beginning
-    if send.lower().startswith("botpal:"):
-        send = send[7:].strip()
-    
-    # limit the length of the response
-    if len(send) > 400:
-        send = send[:400]
-        changed = True
-    
-    # cut off the response at the first special character
-    for char in [">", "<", "/", "\r", "\n", "[", "#", "]"]:
-        if char in send:
-            send = send[:send.index(char)].strip()
-            changed = True
-    
-    # cut off the response at the brace if it includes the word "instruction"
-    if "instruction" in send.lower():
-        match = re.search("[()]", send)
-        if match:
-            send = send[match.start():].strip()
-            changed = True
-    
-    # send default response if the response if the ai is introducing itself
-    if ("ich bin" in send.lower() or "i am" in send.lower() or "i'm" in send.lower()) and "botpal" in send.lower():
-        send = getTranslation("defaultResponse")
-        changed = True
-        
-    # replace "alles in ordnung"
-    if "alles in ordnung" in send.lower():
-        send = getTranslation("allGood") + "@" + message.author.name + "?"
-        changed = True
-    
-    # add the alertus emoji to the response at the end if it was modified
-    if changed:
-        send = send + " " + get_alertus(message.author.channel.name)
-        print("original: " + unchanged)
-    await message.channel.send(send)
     
 # environment variables for spotify
 load_dotenv()
@@ -310,6 +266,12 @@ def create_spotify_oauth():
 # authentication sites for spotify oauth
 @app.route("/")
 def index():
+    global token_info
+    if token_info:
+        return "Du bist eingeloggt"
+    if session.get("token_info"):
+        token_info = session.get("token_info")
+        return redirect("/success")
     return "Mit Spotify <a href='/login'>einloggen</a>"
 
 @app.route("/login")
@@ -327,6 +289,7 @@ def callback():
     global token_info
     global expires_at
     token_info = create_spotify_oauth().get_access_token(code)
+    session["token_info"] = token_info
     expires_at = int(time.time()) + token_info["expires_in"]
     return redirect("/success")
 
@@ -346,6 +309,8 @@ def get_spotify():
 
 # returns the device id of the first device of the user
 def get_device():
+    if not get_spotify().devices()["devices"]:
+        return None
     return get_spotify().devices()["devices"][0]["id"]
 
 # returns the currently playing song or that nothing is playing
@@ -360,9 +325,13 @@ def add_track_to_queue(track_uri):
     get_spotify().add_to_queue(track_uri)
     return 
 
+# return queue
+def get_queue():
+    return get_spotify().queue()
+
 # search for a song by query
 def get_search_results(query):
-    return get_spotify().search(query, 2, 0, "track")
+    return get_spotify().search(query, 10, 0, "track")
 
 # get the info of a song by uri
 def get_song_info(track_uri):
@@ -371,7 +340,90 @@ def get_song_info(track_uri):
 # skip the current song
 def skip_song():
     device_id = get_device()
-    return get_spotify().next_track(device_id)
+    if not device_id:
+        return False
+    get_spotify().next_track(device_id)
+    return True
+
+# get view count of a channel
+def get_view_count(channel):
+    global channel_ids
+    response = requests.get("https://api.twitch.tv/helix/streams?user_id=" + channel_ids[channel], headers=get_twitch_headers())
+    if response.status_code == 200:
+        data = response.json()
+        if data["data"]:
+            return data["data"][0]["viewer_count"]
+        return 0
+    else:
+        print("Error:", response.status_code)
+        return 0
+        
+# get all mods of a channel
+def get_mods(channel):
+    response = requests.get("https://api.twitch.tv/helix/moderation/moderators?broadcaster_id=" + channel_ids[channel], headers=get_twitch_client_headers(channel))
+    if response.status_code == 200:
+        data = response.json()
+        mods = []
+        for mod in data["data"]:
+            mods.append(mod["user_name"])
+        return mods
+    else:
+        print("Error:", response.status_code)
+        return []
+    
+# get list of custom rewards
+def get_custom_rewards(channel):
+    response = requests.get("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" + channel_ids[channel], headers=get_twitch_client_headers(channel))
+    if response.status_code == 200:
+        return response.json()["data"]
+    else:
+        print("Error:", response)
+        return []
+    
+# get redemptions of a custom reward
+def get_redemptions(channel, reward_id):
+    response = requests.get("https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions?broadcaster_id=" + channel_ids[channel] + "&reward_id=" + reward_id + "&status=UNFULFILLED", headers=get_twitch_client_headers(channel))
+    if response.status_code == 200:
+        data = response.json()
+        return data["data"]
+    else:
+        print("Error:", response)
+        return []
+    
+# create reward
+def create_custom_reward(channel, title, cost):
+    data = {
+        "title": title,
+        "cost": cost,
+        "prompt": "Requeste einen Song mit einem Link oder dem Namen des Songs",
+        "is_enabled": True,
+        "background_color": "#1e90ff",
+        "is_user_input_required": True,
+    }
+    response = requests.post("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=" + channel_ids[channel], headers=get_twitch_client_headers(channel), json=data)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Error:", response)
+        return None
+
+# bot command to print redemptions
+@bot.command(name='rewards')
+async def rewards_command(ctx):
+    if ctx.author.name != "fritzpal":
+        return
+    rewards = get_redemptions(ctx.author.channel.name, "5de133f6-8928-48cc-ba88-1515c16437bf")
+    print(rewards)
+
+# bot command to see mods
+@bot.command(name='mods')
+async def mods_command(ctx):
+    mods = get_mods(ctx.author.channel.name)
+    if not mods:
+        await ctx.send("/me no mods")
+        return
+    await ctx.send("/me Mods: " + ", ".join(mods))  
+
 
 # bot commands to get currently playing song
 @bot.command(name='song')
@@ -380,43 +432,182 @@ async def song_command(ctx):
         await ctx.send("/me spotify not authenticated")
         return
     song = get_currently_playing()
-    print(song)
-    await ctx.send(song)
+    await ctx.send("@" + ctx.author.name + " -> Song: " + song)
+    
+# bot command to see the queue
+@bot.command(name='queue', aliases=['q'])
+async def queue_command(ctx):
+    if not token_info:
+        await ctx.send("/me spotify not authenticated")
+        return
+    queue = get_queue()
+    if not queue["queue"]:
+        await ctx.send("/me queue is empty")
+        return
+    songs = []
+    for item in queue["queue"]:
+        songs.append(item["name"] + " - " + item["artists"][0]["name"])
+    # add the first 3 songs to the message
+    msg = "/me " + getTranslation("queue") + ": "
+    for i in range(3):
+        if i < len(songs):
+            msg += songs[i] + " -> "
+    msg = msg[:-4]
+    if len(msg) > 500:
+        msg = msg[:500]
+    await ctx.send(msg)
+    
+# bot command to vote skip the current song
+@bot.command(name='skip', aliases=['voteskip'])
+async def skip_command(ctx):
+    global whenSkip
+    global whoWantsSkip
+    if not token_info:
+        await ctx.send("/me spotify not authenticated")
+        return
+    if time.time() - whenSkip > 30:
+        whoWantsSkip.clear()
+    if ctx.author.name in whoWantsSkip:
+        return
+    whoWantsSkip.append(ctx.author.name)
+    viewcount = get_view_count(ctx.author.channel.name)
+    needed = int(viewcount / 5 + 1)
+    needed = max(needed, 2)
+    if len(whoWantsSkip) >= needed:
+        if skip_song():
+            await ctx.send("/me skipped song")
+        else:
+            await ctx.send(getTranslation("noSong"))
+        whoWantsSkip.clear()
+    else:
+        await ctx.send("/me " + ctx.author.name + getTranslation("skip") + " (" + str(len(whoWantsSkip)) + "/" + str(needed) + ")")
+        whenSkip = time.time()
+        
+# bot command to blacklist a song
+@bot.command(name='blacklist', aliases=['blacklistsong'])
+async def blacklist_command(ctx, song=None):
+    if not token_info:
+        await ctx.send("/me spotify not authenticated")
+        return
+    if not is_mod(ctx.message._raw_data):
+        return
+    if not song:
+        await ctx.send("/me Usage: !blacklist <song>")
+        return
+    info = get_song_info(song)
+    if not info:
+        await ctx.send("/me Song not found")
+        return
+    blacklist.append(info["uri"])
+    await ctx.send("/me Added " + info["name"] + " - " + info["artists"][0]["name"] + " to the blacklist")
+    # write to file
+    with open("blacklisted.txt", "a") as file:
+        file.write(info["uri"] + "\n")
+
+# parse raw data and return if the user is a mod
+def is_mod(raw_data):
+    attributes = raw_data.split(";")
+    print(attributes)
+    for attribute in attributes:
+        if "mod=1" == attribute or "display-name=Fritzpal" in attribute:
+            return True
+        if "mod=0" == attribute:
+            return False
+    return False
+
+# parse raw data and return if the message is a redemption of the songrequest reward
+def is_redemption(raw_data):
+    attributes = raw_data.split(";")
+    for attribute in attributes:
+        if "custom-reward-id=5de133f6-8928-48cc-ba88-1515c16437bf" == attribute:
+            return True
+    return False
+
+# bot command to force skip as mod
+@bot.command(name='forceskip')
+async def forceskip_command(ctx):
+    if is_mod(ctx.message._raw_data):
+        if skip_song():
+            await ctx.send("/me skipped song")
+        else:
+            await ctx.send(getTranslation("noSong"))
+
+# process the redemption of the songrequest reward
+async def process_redeem(song, channel):
+    global token_info
+    if not token_info:
+        await channel.send("/me spotify not authenticated")
+        return
+    if not song:
+        return
+    song = song.strip()
+    track = None
+    if "spotify:track:" not in song and "open.spotify.com" not in song:
+        search_results = get_search_results(song)
+        if not search_results or not search_results["tracks"]["items"]:
+            await channel.send("/me Song not found")
+            return
+        song = search_results["tracks"]["items"][0]["uri"]
+        track = search_results["tracks"]["items"][0]["name"] + " - " + search_results["tracks"]["items"][0]["artists"][0]["name"]
+    try:
+        if not track:
+            info = get_song_info(song)
+            track = info["name"] + " - " + info["artists"][0]["name"]
+            song = info["uri"]
+        if song in blacklist:
+            await channel.send("/me Song is blacklisted " + get_alertus(channel.name))
+            return
+        add_track_to_queue(song)
+    except Exception as e:
+        print("Error:", e)
+        if "NO_ACTIVE_DEVICE" in str(e):
+            await channel.send("/me No active device")
+            return
+        await channel.send("/me Song not found")
+        return    
+    await channel.send("/me added " + track + " to the queue")
 
 # bot command to request a song
 @bot.command(name='songrequest', aliases=['sr'])
 async def songrequest_command(ctx, *, song):
-    global token_info
-    if not token_info:
-        await ctx.send("/me spotify not authenticated")
-        return
     if not song:
         await ctx.send("/me Usage: !sr <name|link>")
         return
-    if "spotify:track:" not in song and "open.spotify.com" not in song:
-        search_results = get_search_results(song)
-        if not search_results:
-            await ctx.send("/me Song not found")
-            return
-        song = search_results["tracks"]["items"][0]["uri"]
-    try:
-        add_track_to_queue(song)
-    except Exception as e:
-        print("Error:", e)
-        await ctx.send("/me Song not found")
-        return    
-    track = search_results["tracks"]["items"][0]["name"] + " - " + search_results["tracks"]["items"][0]["artists"][0]["name"]
-    await ctx.send("/me added " + track + " to the queue")
-
+    await process_redeem(song, ctx.author.channel)
+    
+# get the blacklisted songs from cvs file
+def fill_blacklist():
+    global blacklist
+    with open("blacklisted.txt", "r") as file:
+        blacklist = file.read().splitlines()
+    print(blacklist)
+    
+# get the channel ids for the channels
+def retrieve_channel_ids():
+    global channel_ids
+    response = requests.get("https://api.twitch.tv/helix/users?login=" + "&login=".join(channels), headers=get_twitch_headers())
+    if response.status_code == 200:
+        for user in response.json()["data"]:
+            channel_ids[user["login"]] = user["id"]
+    else:
+        print("Error:", response.status_code)
+    print(channel_ids)
 
 # run the bot
-@app.route("/success")
-def success():
+def run_bot():
     if __name__ == "__main__":
         threading.Thread(target=bot.run).start()
+
+@app.route("/success")
+def success():
+    run_bot()
+    retrieve_channel_ids()
+    fill_blacklist()
     return "Du kannst den tab jetzt schließen"
-  
+
+
 # run the flask app
+webbrowser.open("https://localhost:3000", new=0, autoraise=True)
 app.run(host="0.0.0.0", port=3000, debug=True, ssl_context="adhoc")
     
           
