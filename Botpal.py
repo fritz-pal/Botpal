@@ -53,7 +53,8 @@ def getTranslation(key):
         "allGood": "Mir geht es gut, danke der Nachfrage. Wie geht es dir ",
         "noSong": "Es wird gerade kein Song abgespielt.",
         "queue": "Die nächsten Songs sind",
-        "skip": " möchte den Song skippen. "
+        "skip": " möchte den Song skippen. ",
+        "volumeSet": "Setze Lautstärke auf "
     }
     translationsEN = {
         "stink": " smells!",
@@ -68,7 +69,8 @@ def getTranslation(key):
         "allGood": "I am fine, thank you for asking. How are you ",
         "noSong": "Nothing is playing",
         "queue": "The next songs are",
-        "skip": " wants to skip the song. "
+        "skip": " wants to skip the song. ",
+        "volumeSet": "Set volume to "
     }
     
     if language == "de":
@@ -330,6 +332,14 @@ def add_track_to_queue(track_uri):
 def get_queue():
     return get_spotify().queue()
 
+# set the volume of the current device
+def set_volume(volume):
+    device_id = get_device()
+    if not device_id:
+        return False
+    get_spotify().volume(volume, device_id)
+    return True
+
 # search for a song by query
 def get_search_results(query):
     return get_spotify().search(query, 10, 0, "track")
@@ -418,21 +428,17 @@ def delete_custom_reward(channel, reward_id):
         print("Error:", response)
         return None
 
-# bot command rewards
-@bot.command(name='rewards')
-async def rewards_command(ctx):
-    if ctx.author.name != "fritzpal":
+# bot command to create the songrequest reward
+@bot.command(name='createreward')
+async def createreward_command(ctx):
+    if not ctx.author.channel.name == ctx.author.name and not ctx.author.name == "fritzpal":
         return
-    rewards = get_custom_rewards(ctx.author.channel.name)
-    if not rewards:
-        await ctx.send("/me no rewards")
+    reward = create_custom_reward(ctx.author.channel.name)
+    if not reward:
+        await ctx.send("/me Error creating reward")
         return
-    msg = "/me Rewards: "
-    for reward in rewards:
-        msg += reward["title"] + " - " + str(reward["cost"]) + " -> "
-    msg = msg[:-4]
-    await ctx.send(msg)
-    
+    await ctx.send("/me Reward successfully created: " + reward["data"][0]["id"])
+
 # bot command to see mods
 @bot.command(name='mods')
 async def mods_command(ctx):
@@ -473,6 +479,29 @@ async def queue_command(ctx):
     if len(msg) > 500:
         msg = msg[:500]
     await ctx.send(msg)
+    
+# bot command to change volume
+@bot.command(name='volume', aliases=['vol'])
+async def volume_command(ctx, volume=None):
+    if not is_mod(ctx.message._raw_data):
+        return
+    if not token_info:
+        await ctx.send("/me spotify not authenticated")
+        return
+    if not volume:
+        await ctx.send("/me Usage: !volume <0-100>")
+        return
+    try:
+        volume = int(volume)
+        if volume < 0 or volume > 100:
+            await ctx.send("/me Usage: !volume <0-100>")
+            return
+        if set_volume(volume):
+            await ctx.send(getTranslation("volumeSet") + str(volume) + "%")
+        else:
+            await ctx.send("/me No active device")
+    except:
+        await ctx.send("/me Usage: !volume <0-100>")
     
 # bot command to vote skip the current song
 @bot.command(name='skip', aliases=['voteskip'])
