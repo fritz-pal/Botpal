@@ -12,6 +12,7 @@ from flask import Flask, redirect, request, jsonify, session
 import threading
 import webbrowser
 from AnswersAI import answer_question
+from BotpalUtils import get_alertus, time_format, getTranslation, language
 
 # https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=channel%3Abot+channel%3Amanage%3Amoderators+channel%3Amanage%3Aredemptions
 
@@ -33,50 +34,10 @@ whenSkip = 0
 listOfIms = ["ich bin ein ", "i'm a ", "i am an ", "i am the ", "ich bin der ", "i'm the ", "im the ", "i am the ", "ich bin die ", "i bims der ", "i bims ", "ich heiße ", "i'm called ", "i'm named ", "i'm known as ", "mein name ist ", "i am ", "ich bin ", "i'm "]
 regex_pattern = "|".join(map(re.escape, listOfIms))
 channels = ["lordzaros_"]
+lurks = {}
 twitch_client_tokens = {"lordzaros_": os.getenv("TWITCH_TOKEN_ZAROS")}
 channel_ids = {}
-language = "de"
 blacklist = []
-
-# translations
-def getTranslation(key):
-    translationsDE = {
-        "stink": " stinkt!",
-        "iam": ", ich bin Botpal",
-        "hallo": "Hallo ",
-        "defaultResponse": "Ich bin ein Twitchbot namens Botpal. Ich bin allwissend und du kannst mich alles fragen.",
-        "overloaded": "Ich bin gerade überfordert. Frag mich gleich nochmal.",
-        "test": "/me Test erfolgreich",
-        "systemPrompt": "Du bist ein Twitch Chatbot namens Botpal und du bist allwissend. Antworte immer nur mit EINEM ganz kurzen Satz und auf DEUTSCH. Du bist im stream vom streamer ",
-        "systemPrompt2": " und der Zuschauer ",
-        "systemPrompt3": " stellt dir eine Frage.",
-        "allGood": "Mir geht es gut, danke der Nachfrage. Wie geht es dir ",
-        "noSong": "Es wird gerade kein Song abgespielt.",
-        "queue": "Die nächsten Songs sind",
-        "skip": " möchte den Song skippen. ",
-        "volumeSet": "Setze Lautstärke auf "
-    }
-    translationsEN = {
-        "stink": " smells!",
-        "iam": ", I am Botpal",
-        "hallo": "Hello ",
-        "defaultResponse": "I am a twitchbot named Botpal. I am all-knowing and you can ask me anything.",
-        "overloaded": "I am a bit overwhelmed. Ask me again in a moment.",
-        "test": "/me Test successful",
-        "systemPrompt": "You are a Twitch chatbot named Botpal and you are all-knowing. Always respond with ONE very short sentence and in English. You are in the stream of the streamer ",
-        "systemPrompt2": " and the viewer ",
-        "systemPrompt3": " asks you a question.",
-        "allGood": "I am fine, thank you for asking. How are you ",
-        "noSong": "Nothing is playing",
-        "queue": "The next songs are",
-        "skip": " wants to skip the song. ",
-        "volumeSet": "Set volume to "
-    }
-    
-    if language == "de":
-        return translationsDE[key]
-    if language == "en":
-        return translationsEN[key]
     
 # create the bot
 bot = commands.Bot(
@@ -118,10 +79,12 @@ async def event_message(message: Message):
         print("null: ", message.content)
         return
     
+    # check if the message is a redemption of the songrequest reward
     if is_redemption(message.raw_data):
         await process_redeem(message.content, message.channel)
         return
     
+    # print the message to the console
     print("chat:(" + message.author.channel.name + ") " + message.author.name,":", message.content)
     
     # 1% chance to tell someone they stink
@@ -144,9 +107,15 @@ async def event_message(message: Message):
     global klonoa
     if message.author.name == "klonoaofthewind":
         if klonoa > 0:
-            await message.channel.send("/me Klonoa war " + str(round(time.time() - klonoa)) + " Sekunden auf dem Klo")
+            await message.channel.send("/me Klonoa war " + time_format(round(time.time() - klonoa)) + " auf dem Klo")
             klonoa = 0
-
+    
+    # check if chatter was lurking and respond with the time
+    lurktime = round(time.time() - lurks[message.author.name])
+    if message.author.name in lurks:
+        await message.channel.send("/me " + message.author.name + " war " + time_format(lurktime) + " im lurk!")
+        lurks.pop(message.author.name)
+        
     # echo emotes
     if message.author.name == "streamelements" and message.content == "DieStimmen":
         await message.channel.send("frfr")
@@ -158,16 +127,6 @@ async def event_message(message: Message):
 async def test_command(ctx):
     await ctx.send(getTranslation("test"))
 
-# returns the alertus emoji for the given channel
-def get_alertus(channel):
-    if channel == "haplolp":
-        return "haplolALERTUs"
-    if channel == "klonoaofthewind" or channel == "b1gf1sch":
-        return "ALERTUS"
-    if channel == "fritzpal" or channel == "lordzaros_":
-        return "ALERTUs"
-    return "🚨"
-
 # command klo
 @bot.command(name='klo')
 async def pipi_command(ctx):
@@ -175,6 +134,14 @@ async def pipi_command(ctx):
     if klonoa == 0:
         klonoa = time.time()
         await ctx.send("/me Klonoa muss aufs Klo " + get_alertus(ctx.author.channel.name))
+        
+# command lurk
+@bot.command(name='lurk')
+async def lurk_command(ctx):
+    if ctx.author.name in lurks:
+        return
+    lurks[ctx.author.name] = time.time()
+    await ctx.send("/me " + ctx.author.name + " ist jetzt im lurk! " + get_alertus(ctx.author.channel.name))
 
 # command play
 @bot.command(name='play')
@@ -483,7 +450,7 @@ async def queue_command(ctx):
 # bot command to change volume
 @bot.command(name='volume', aliases=['vol'])
 async def volume_command(ctx, volume=None):
-    if not is_mod(ctx.message._raw_data):
+    if not is_mod(ctx):
         return
     if not token_info:
         await ctx.send("/me spotify not authenticated")
@@ -535,7 +502,7 @@ async def blacklist_command(ctx, song=None):
     if not token_info:
         await ctx.send("/me spotify not authenticated")
         return
-    if not is_mod(ctx.message._raw_data):
+    if not is_mod(ctx):
         return
     if not song:
         await ctx.send("/me Usage: !blacklist <song>")
@@ -551,8 +518,10 @@ async def blacklist_command(ctx, song=None):
         file.write(info["uri"] + "\n")
 
 # parse raw data and return if the user is a mod
-def is_mod(raw_data):
-    attributes = raw_data.split(";")
+def is_mod(ctx):
+    if ctx.author.name == ctx.author.channel.name:
+        return True
+    attributes = ctx.raw_data.split(";")
     print(attributes)
     for attribute in attributes:
         if "mod=1" == attribute or "display-name=Fritzpal" in attribute:
@@ -573,7 +542,7 @@ def is_redemption(raw_data):
 # bot command to force skip as mod
 @bot.command(name='forceskip')
 async def forceskip_command(ctx):
-    if is_mod(ctx.message._raw_data):
+    if is_mod(ctx):
         if skip_song():
             await ctx.send("/me skipped song")
         else:
