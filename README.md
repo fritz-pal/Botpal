@@ -1,6 +1,7 @@
 # This python program is a comprehensive implementation of a Twitch chatbot named Botpal, which integrates with various APIs, including OpenAI's GPT for AI responses and Spotify for music-related commands. The code is structured to handle environment variables, translations, Twitch commands, and Spotify OAuth authentication.
 
 (title made by botpal himself)
+*bot only works with spotify premium*
 
 ## to install:
  - install libraries using "pip install -r requirements.txt"
@@ -32,19 +33,19 @@ REWARD_ID="" # keep empty if not affiliate
 
 ## All twitch commands:
 ### User commands
-!test: Sends a test message.
-!klo: Notifies that Klonoa needs to go to the bathroom.
-!lurk: Notifies that the user is lurking.
-!elo: Retrieves the rapid elo rating of a player.
-!mods: Retrieves the list of moderators.
-!song: Retrieves the currently playing song.
-!queue or !q: Retrieves the next 3 Songs to be played.
-!skip or !voteskip: Initiates a vote to skip the current song.
-!songrequest or !sr: Requests a song to be added to the queue.
+- !test: Sends a test message.
+- !klo: Notifies that Klonoa needs to go to the bathroom.
+- !lurk: Notifies that the user is lurking.
+- !elo: Retrieves the rapid elo rating of a player.
+- !mods: Retrieves the list of moderators.
+- !song: Retrieves the currently playing song.
+- !queue or !q: Retrieves the next 3 Songs to be played.
+- !skip or !voteskip: Initiates a vote to skip the current song.
+- !songrequest or !sr: Requests a song to be added to the queue.
 
 ### Mod commands:
-!blacklist or !blacklistsong: Adds a song to the blacklist.
-!forceskip: Forces the skipping of the current song.
-!volume or !vol: Changes the volume of the music.
-!api-key: Manually changes the API key.
-!createreward: Creates the custom reward for song requests return the ID to be put into the environment variable.
+- !blacklist or !blacklistsong: Adds a song to the blacklist.
+- !forceskip: Forces the skipping of the current song.
+- !volume or !vol: Changes the volume of the music.
+- !api-key: Manually changes the API key.
+- !createreward: Creates the custom reward for song requests return the ID to be put into the environment variable.
