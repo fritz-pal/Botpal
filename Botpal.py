@@ -200,7 +200,7 @@ async def death_command(ctx, amount = None):
 # command to manually change api key
 @bot.command(name='api-key')
 async def api_key_command(ctx, key = None):
-    if ctx.author.name == "fritzpal":
+    if is_mod(ctx):
         global current_key
         if key:
             try:
