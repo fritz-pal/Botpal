@@ -2,18 +2,20 @@ language = "de"
 
 # formats a time in seconds to a human readable format
 def time_format(seconds: int) -> str:
+    if seconds == 0:
+        return None
     d = seconds // (3600 * 24)
     h = seconds // 3600 % 24
     m = seconds % 3600 // 60
     s = seconds % 3600 % 60
     if d > 0:
-        return '{:02d}d {:02d}h {:02d}m {:02d}s'.format(d, h, m, s)
+        return ' {:02d}d {:02d}h {:02d}m {:02d}s'.format(d, h, m, s).replace(" 0", " ").strip()
     elif h > 0:
-        return '{:02d}h {:02d}m {:02d}s'.format(h, m, s)
+        return ' {:02d}h {:02d}m {:02d}s'.format(h, m, s).replace(" 0", " ").strip()
     elif m > 0:
-        return '{:02d}m {:02d}s'.format(m, s)
+        return ' {:02d}m {:02d}s'.format(m, s).replace(" 0", " ").strip()
     elif s > 0:
-        return '{:02d}s'.format(s)
+        return ' {:02d}s'.format(s).replace(" 0", " ").strip()
     
 
 # returns the alertus emoji for the given channel

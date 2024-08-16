@@ -11,6 +11,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from flask import Flask, redirect, request, jsonify, session
 import threading
 import webbrowser
+import pickle
 from AnswersAI import answer_question
 from BotpalUtils import get_alertus, time_format, getTranslation, language
 
@@ -111,10 +112,12 @@ async def event_message(message: Message):
             klonoa = 0
     
     # check if chatter was lurking and respond with the time
-    lurktime = round(time.time() - lurks[message.author.name])
     if message.author.name in lurks:
-        await message.channel.send("/me " + message.author.name + " war " + time_format(lurktime) + " im lurk!")
-        lurks.pop(message.author.name)
+        lurktime = time_format(round(time.time() - lurks[message.author.name]))
+        if lurktime:
+            await message.channel.send("/me " + message.author.name + " war " + lurktime + " im lurk!")
+            lurks.pop(message.author.name)
+            serialize_lurks()
         
     # echo emotes
     if message.author.name == "streamelements" and message.content == "DieStimmen":
@@ -141,6 +144,7 @@ async def lurk_command(ctx):
     if ctx.author.name in lurks:
         return
     lurks[ctx.author.name] = time.time()
+    serialize_lurks()
     await ctx.send("/me " + ctx.author.name + " ist jetzt im lurk! " + get_alertus(ctx.author.channel.name))
 
 # command play
@@ -608,6 +612,18 @@ def retrieve_channel_ids():
     else:
         print("Error:", response.status_code)
     print(channel_ids)
+    
+# deserialize the lurk dictionary
+def deserialize_lurks():
+    global lurks
+    with open('lurk.pickle', 'rb') as handle:
+        lurks = pickle.load(handle)
+        
+# serialize the lurk dictionary
+def serialize_lurks():
+    global lurks 
+    with open('lurk.pickle', 'wb') as handle:
+        pickle.dump(lurks, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # run the bot
 def run_bot():
@@ -619,6 +635,7 @@ def success():
     run_bot()
     retrieve_channel_ids()
     fill_blacklist()
+    deserialize_lurks()
     return "Du kannst den tab jetzt schließen"
 
 
