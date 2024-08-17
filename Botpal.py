@@ -39,6 +39,7 @@ lurks = {}
 twitch_client_tokens = {"lordzaros_": os.getenv("TWITCH_TOKEN_ZAROS")}
 channel_ids = {}
 blacklist = []
+blacklistedUsers = []
     
 # create the bot
 bot = commands.Bot(
@@ -82,6 +83,9 @@ async def event_message(message: Message):
     
     # check if the message is a redemption of the songrequest reward
     if is_redemption(message.raw_data):
+        if message.author.name in blacklistedUsers:
+            await message.channel.send("@" + message.author.name + " du bist permanent vom Songrequest ausgeschlossen")
+            return
         await process_redeem(message.content, message.channel)
         return
     
@@ -515,7 +519,7 @@ async def blacklist_command(ctx, song=None):
     if not song:
         await ctx.send("/me Usage: !blacklist <song>")
         return
-    info = get_song_info(song)
+    info = get_song_info(song.strip())
     if not info:
         await ctx.send("/me Song not found")
         return
@@ -524,6 +528,21 @@ async def blacklist_command(ctx, song=None):
     # write to file
     with open("blacklisted.txt", "a") as file:
         file.write(info["uri"] + "\n")
+        
+# bot command to blacklist a user
+@bot.command(name='blacklistuser')
+async def blacklistuser_command(ctx, user=None):
+    if not is_mod(ctx):
+        return
+    if not user:
+        await ctx.send("/me Usage: !blacklistuser <user>")
+        return
+    user = user.strip().lower()
+    blacklistedUsers.append(user)
+    await ctx.send("/me Added " + user + " to the blacklist")
+    # write to file
+    with open("blacklistedusers.txt", "a") as file:
+        file.write(user + "\n")
 
 # parse raw data and return if the user is a mod
 def is_mod(ctx):
@@ -594,6 +613,8 @@ async def process_redeem(song, channel):
 # bot command to request a song
 @bot.command(name='songrequest', aliases=['sr'])
 async def songrequest_command(ctx, *, song):
+    if not is_mod(ctx):
+        return
     if not song:
         await ctx.send("/me Usage: !sr <name|link>")
         return
@@ -605,6 +626,9 @@ def fill_blacklist():
     with open("blacklisted.txt", "r") as file:
         blacklist = file.read().splitlines()
     print(blacklist)
+    with open("blacklistedusers.txt", "r") as file:
+        global blacklistedUsers
+        blacklistedUsers = file.read().splitlines()
     
 # get the channel ids for the channels
 def retrieve_channel_ids():
