@@ -16,7 +16,12 @@ def time_format(seconds: int) -> str:
         return ' {:02d}m {:02d}s'.format(m, s).replace(" 0", " ").strip()
     elif s > 0:
         return ' {:02d}s'.format(s).replace(" 0", " ").strip()
-    
+
+# check if the message is a question
+def is_question(text):
+    if language == "de":
+        return ("?" in text or "gibt es" in text or "kannst du" in text or "bist du" in text or "was" in text or "wer" in text or "warum" in text or "wie" in text or "wieso" in text or "weshalb" in text or "wozu" in text or "welcher" in text or "welche" in text or "welches" in text or "wann" in text or "wo " in text)
+    return ("?" in text or "is there" in text or "can you" in text or "are you" in text or "do you" in text or "who" in text or "why" in text or "how" in text or "where" in text or "what" in text or "which" in text or "whom" in text or "whose" in text or "when" in text) 
 
 # returns the alertus emoji for the given channel
 def get_alertus(channel):
@@ -67,3 +72,27 @@ def getTranslation(key):
         return translationsDE[key]
     if language == "en":
         return translationsEN[key]
+    
+    # parse raw data and return if the user is a mod
+def is_mod(ctx):
+    if ctx.author.name == ctx.author.channel.name:
+        return True
+    attributes = ctx.message.raw_data.split(";")
+    print(attributes)
+    for attribute in attributes:
+        if "mod=1" == attribute or "display-name=Fritzpal" in attribute:
+            return True
+        if "mod=0" == attribute:
+            return False
+    return False
+
+# parse raw data and return if the user is a mod
+def is_vip(ctx):
+    attributes = ctx.message.raw_data.split(";")
+    print(attributes)
+    for attribute in attributes:
+        if "vip=1" == attribute:
+            return True
+        if "vip=0" == attribute:
+            return False
+    return False

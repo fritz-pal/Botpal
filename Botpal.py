@@ -13,7 +13,7 @@ import threading
 import webbrowser
 import pickle
 from AnswersAI import answer_question
-from BotpalUtils import get_alertus, time_format, getTranslation, language
+from BotpalUtils import get_alertus, time_format, getTranslation, is_question, is_mod, is_vip
 
 # https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=channel%3Abot+channel%3Amanage%3Amoderators+channel%3Amanage%3Aredemptions
 
@@ -66,12 +66,6 @@ def get_twitch_client_headers(channel):
         "Client-ID": twitch_client_id,
         "Authorization": "Bearer " + twitch_client_tokens[channel]
     }
-
-# check if the message is a question
-def is_question(text):
-    if language == "de":
-        return ("?" in text or "gibt es" in text or "kannst du" in text or "bist du" in text or "was" in text or "wer" in text or "warum" in text or "wie" in text or "wieso" in text or "weshalb" in text or "wozu" in text or "welcher" in text or "welche" in text or "welches" in text or "wann" in text or "wo " in text)
-    return ("?" in text or "is there" in text or "can you" in text or "are you" in text or "do you" in text or "who" in text or "why" in text or "how" in text or "where" in text or "what" in text or "which" in text or "whom" in text or "whose" in text or "when" in text) 
 
 # event listener for chat messages
 @bot.event()
@@ -189,9 +183,9 @@ async def elo_command(ctx, name=None):
 # command death 
 @bot.command(name='death')
 async def death_command(ctx, amount = None):
-    if ctx.author.channel.name != "blome17" and ctx.author.name != "fritzpal":
-        return
     global deaths
+    if not is_mod(ctx) or not is_vip(ctx):
+        return
     if amount:
         try:
             deaths = int(amount)
@@ -199,7 +193,7 @@ async def death_command(ctx, amount = None):
             deaths += 1
     else:
         deaths += 1
-    await ctx.send(f"/me Vicky ist bisher {deaths} mal gestorben.")
+    await ctx.send(f"/me " + ctx.author.channel.name + " ist bisher {deaths} mal gestorben.")
     
 # command to manually change api key
 @bot.command(name='api-key')
@@ -543,19 +537,6 @@ async def blacklistuser_command(ctx, user=None):
     # write to file
     with open("blacklistedusers.txt", "a") as file:
         file.write(user + "\n")
-
-# parse raw data and return if the user is a mod
-def is_mod(ctx):
-    if ctx.author.name == ctx.author.channel.name:
-        return True
-    attributes = ctx.message.raw_data.split(";")
-    print(attributes)
-    for attribute in attributes:
-        if "mod=1" == attribute or "display-name=Fritzpal" in attribute:
-            return True
-        if "mod=0" == attribute:
-            return False
-    return False
 
 # parse raw data and return if the message is a redemption of the songrequest reward
 def is_redemption(raw_data):
