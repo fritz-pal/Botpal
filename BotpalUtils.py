@@ -91,8 +91,8 @@ def is_vip(ctx):
     attributes = ctx.message.raw_data.split(";")
     print(attributes)
     for attribute in attributes:
-        if "vip=1" == attribute:
+        if attribute.startswith("vip=1"):
             return True
-        if "vip=0" == attribute:
+        if attribute.startswith("vip=0"):
             return False
     return False

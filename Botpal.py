@@ -184,7 +184,7 @@ async def elo_command(ctx, name=None):
 @bot.command(name='death')
 async def death_command(ctx, amount = None):
     global deaths
-    if not is_mod(ctx) or not is_vip(ctx):
+    if not is_mod(ctx) and not is_vip(ctx):
         return
     if amount:
         try:
@@ -193,7 +193,7 @@ async def death_command(ctx, amount = None):
             deaths += 1
     else:
         deaths += 1
-    await ctx.send(f"/me " + ctx.author.channel.name + " ist bisher {deaths} mal gestorben.")
+    await ctx.send(f"/me {ctx.author.channel.name} ist bisher {deaths} mal gestorben.")
     
 # command to manually change api key
 @bot.command(name='api-key')
@@ -625,8 +625,12 @@ def retrieve_channel_ids():
 # deserialize the lurk dictionary
 def deserialize_lurks():
     global lurks
-    with open('lurk.pickle', 'rb') as handle:
-        lurks = pickle.load(handle)
+    if os.path.isfile("lurk.pickle"):
+        with open('lurk.pickle', 'rb') as handle:
+            lurks = pickle.load(handle)
+    else:
+        serialize_lurks()
+        
         
 # serialize the lurk dictionary
 def serialize_lurks():
