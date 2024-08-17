@@ -289,10 +289,14 @@ def get_device():
 
 # returns the currently playing song or that nothing is playing
 def get_currently_playing():
-    playback = get_spotify().current_playback()
-    if not playback:
-        return getTranslation("noSong")
-    return playback["item"]["name"] + " - " + playback["item"]["artists"][0]["name"]
+    try:
+        playback = get_spotify().current_playback()
+        if not playback:
+            return getTranslation("noSong")
+        return playback["item"]["name"] + " - " + playback["item"]["artists"][0]["name"]
+    except:
+        print(playback)
+        return "Error fetching song"
 
 # add a song to the queue by uri
 def add_track_to_queue(track_uri):
@@ -525,7 +529,7 @@ async def blacklist_command(ctx, song=None):
 def is_mod(ctx):
     if ctx.author.name == ctx.author.channel.name:
         return True
-    attributes = ctx.raw_data.split(";")
+    attributes = ctx.message.raw_data.split(";")
     print(attributes)
     for attribute in attributes:
         if "mod=1" == attribute or "display-name=Fritzpal" in attribute:
