@@ -42,6 +42,7 @@ REWARD_ID="" # keep empty if not affiliate
 - !queue or !q: Retrieves the next 3 Songs to be played.
 - !skip or !voteskip: Initiates a vote to skip the current song.
 - !songrequest or !sr: Requests a song to be added to the queue.
+- !weather: Retrieve current weather in a city.
 
 ### Mod commands:
 - !blacklist or !blacklistsong: Adds a song to the blacklist.

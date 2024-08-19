@@ -13,7 +13,7 @@ import threading
 import webbrowser
 import pickle
 from AnswersAI import answer_question
-from BotpalUtils import get_alertus, time_format, getTranslation, is_question, is_mod, is_vip
+from BotpalUtils import get_alertus, time_format, getTranslation, is_question, is_mod, is_vip, language
 
 # https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=channel%3Abot+channel%3Amanage%3Amoderators+channel%3Amanage%3Aredemptions
 
@@ -26,6 +26,7 @@ twitch_token = os.getenv("TWITCH_TOKEN")
 twitch_client_id = os.getenv("TWITCH_CLIENT_ID")
 twitch_client_secret = os.getenv("TWITCH_CLIENT_SECRET")
 reward_id = os.getenv("REWARD_ID")
+weather_key = os.getenv("WEATHER_API_KEY")
 
 # variables
 klonoa = 0
@@ -94,9 +95,17 @@ async def event_message(message: Message):
     match = re.search(regex_pattern, message.content.lower())
     if match:
         nameString = message.content[match.end():].strip()
-        print(match, nameString.split(" "))
-        if nameString:
-            await message.channel.send(getTranslation("hallo") + nameString.split(" ")[0].replace(",", "").replace(".", "") + getTranslation("iam"))
+        split = nameString.split(" ")
+        print(match, split)
+        if len(split) > 0 and len(split) <= 3:
+            name = []
+            for word in split:
+                if word.endswith(",") or word.endswith(".") or word.endswith("!") or word.endswith("?"):
+                    name.append(word[:-1])
+                    break
+                else:
+                    name.append(word)
+            await message.channel.send(getTranslation("hallo") + " ".join(name) + getTranslation("iam"))
 
     # check if the message is a question and respond with the AI
     if ("botpal" in message.content.lower() or "fritzbot" in message.content.lower()) and is_question(message.content.lower()):
@@ -179,6 +188,32 @@ async def elo_command(ctx, name=None):
         await ctx.send(f"/me {subject} has no rapid elo")
         return
     await ctx.send(f"/me {subject}'s rapid elo: {data['chess_rapid']['last']['rating']}")
+
+# command weather
+@bot.command(name='weather')
+async def weather_command(ctx, *, city):
+    if not city:
+        await ctx.send("/me Usage: !weather <city>")
+        return
+    response = requests.get(f"https://api.weatherapi.com/v1/current.json?q={city}&lang={language}&key={weather_key}")
+    if not response:
+        await ctx.send("/me Error fetching weather data")
+        print("Response null")
+        return
+    if response.status_code != 200:
+        print("Error:", response.status_code, response.json())
+        if response.status_code == 400 and response.json()["code"] == 1006:
+            await ctx.send("/me Location not found")
+            return
+        await ctx.send("/me Error fetching weather data")
+        return
+    if language == "de":
+        msg = f"/me Das Wetter in {response.json()["location"]["name"]} - {response.json()["location"]["country"]} ist {response.json()["current"]["condition"]["text"]} bei {response.json()["current"]["temp_c"]}°C. Die Windgeschwindigkeit beträgt {response.json()["current"]["wind_kph"]} km/h."
+    elif language == "en":
+        msg = f"/me The weather in {response.json()["location"]["name"]} - {response.json()["location"]["country"]} is {response.json()["current"]["condition"]["text"]} at {response.json()["current"]["temp_c"]}°C. The wind speed is {response.json()["current"]["wind_kph"]} km/h."
+    if not response.json()["location"]["tz_id"].startswith("Europe"):
+        msg += f" Es ist gerade {response.json()["location"]["localtime"].split()[1]} Uhr in {response.json()["location"]["name"]}."
+    await ctx.send(msg)
 
 # command death 
 @bot.command(name='death')
