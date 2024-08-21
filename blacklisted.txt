@@ -1,3 +1,4 @@
 spotify:track:4PTG3Z6ehGkBFwjybzWkR8
 spotify:track:0wEfMSUj3T7z8ssIxA4AxD
 spotify:track:2Ypfj9qQ0fRclISUH6LPqH
+spotify:artist:5uXtYUItw0wL0dwC3leDOX

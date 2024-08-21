@@ -368,6 +368,10 @@ def get_search_results(query):
 def get_song_info(track_uri):
     return get_spotify().track(track_uri)
 
+# get the info of an artist by uri
+def get_artist_info(artist_uri):
+    return get_spotify().artist(artist_uri)
+
 # skip the current song
 def skip_song():
     device_id = get_device()
@@ -560,12 +564,41 @@ async def blacklist_command(ctx, song=None):
     if not song:
         await ctx.send("/me Usage: !blacklist <song>")
         return
-    info = get_song_info(song.strip())
+    try:
+        info = get_song_info(song.strip())
+    except:
+        await ctx.send("/me Song not found")
+        return
     if not info:
         await ctx.send("/me Song not found")
         return
     blacklist.append(info["uri"])
     await ctx.send("/me Added " + info["name"] + " - " + info["artists"][0]["name"] + " to the blacklist")
+    # write to file
+    with open("blacklisted.txt", "a") as file:
+        file.write(info["uri"] + "\n")
+        
+# bot command to blacklist an artist
+@bot.command(name='blacklistartist')
+async def blacklistartist_command(ctx, artist=None):
+    if not token_info:
+        await ctx.send("/me spotify not authenticated")
+        return
+    if not is_mod(ctx):
+        return
+    if not artist:
+        await ctx.send("/me Usage: !blacklistartist <artist>")
+        return
+    try:
+        info = get_artist_info(artist.strip())
+    except:
+        await ctx.send("/me Artist not found")
+        return
+    if not info:
+        await ctx.send("/me Artist not found")
+        return
+    blacklist.append(info["uri"])
+    await ctx.send("/me Added " + info["name"] + " to the blacklist")
     # write to file
     with open("blacklisted.txt", "a") as file:
         file.write(info["uri"] + "\n")
@@ -613,6 +646,8 @@ async def process_redeem(song, channel):
         return
     song = song.strip()
     track = None
+    artist = None
+    # check if the song is a spotify link and query search results if not
     if "spotify:track:" not in song and "open.spotify.com" not in song:
         search_results = get_search_results(song)
         if not search_results or not search_results["tracks"]["items"]:
@@ -620,16 +655,26 @@ async def process_redeem(song, channel):
             return
         song = search_results["tracks"]["items"][0]["uri"]
         track = search_results["tracks"]["items"][0]["name"] + " - " + search_results["tracks"]["items"][0]["artists"][0]["name"]
+        artists = search_results["tracks"]["items"][0]["artists"]
     try:
+        # get the song info if not already done
         if not track:
             info = get_song_info(song)
             track = info["name"] + " - " + info["artists"][0]["name"]
             song = info["uri"]
+            artists = info["artists"]
+        # check if the song is blacklisted
         if song in blacklist:
             await channel.send("/me Song is blacklisted " + get_alertus(channel.name))
             return
+        # check if any artist of the song is blacklisted
+        if any(artist["uri"] in blacklist for artist in artists):
+            await channel.send("/me Artist is blacklisted " + get_alertus(channel.name))
+            return
+        # add the song to the queue
         add_track_to_queue(song)
     except Exception as e:
+        # send error message if the song is not found or the user has no active device
         print("Error:", e)
         if "NO_ACTIVE_DEVICE" in str(e):
             await channel.send("/me No active device")

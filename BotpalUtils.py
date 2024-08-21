@@ -78,7 +78,6 @@ def is_mod(ctx):
     if ctx.author.name == ctx.author.channel.name:
         return True
     attributes = ctx.message.raw_data.split(";")
-    print(attributes)
     for attribute in attributes:
         if "mod=1" == attribute or "display-name=Fritzpal" in attribute:
             return True
@@ -96,7 +95,6 @@ def get_system_prompt(channel, user):
 # parse raw data and return if the user is a mod
 def is_vip(ctx):
     attributes = ctx.message.raw_data.split(";")
-    print(attributes)
     for attribute in attributes:
         if attribute.startswith("vip=1"):
             return True
