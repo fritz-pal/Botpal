@@ -14,6 +14,7 @@ import webbrowser
 import pickle
 from AnswersAI import answer_question
 from BotpalUtils import get_alertus, time_format, getTranslation, is_question, is_mod, is_vip, language
+from BotpalTTS import change_voice
 
 # https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=channel%3Abot+channel%3Amanage%3Amoderators+channel%3Amanage%3Aredemptions
 
@@ -31,6 +32,7 @@ weather_key = os.getenv("WEATHER_API_KEY")
 # variables
 klonoa = 0
 deaths = 0
+tts_enabled = False
 whoWantsSkip = []
 whenSkip = 0
 listOfIms = ["ich bin ein ", "i'm a ", "i am an ", "i am the ", "ich bin der ", "i'm the ", "im the ", "i am the ", "ich bin die ", "i bims der ", "i bims ", "ich heiße ", "i'm called ", "i'm named ", "i'm known as ", "mein name ist ", "i am ", "ich bin ", "i'm "]
@@ -109,7 +111,7 @@ async def event_message(message: Message):
 
     # check if the message is a question and respond with the AI
     if ("botpal" in message.content.lower() or "fritzbot" in message.content.lower()) and is_question(message.content.lower()):
-        await answer_question(message, getTranslation, get_alertus)
+        await answer_question(message, getTranslation, get_alertus, tts_enabled)
     
     # check if klonoa is on the toilet and respond with the time
     global klonoa
@@ -160,6 +162,30 @@ async def play_command(ctx):
     if ctx.author.name != "fritzpal":
         return
     await ctx.send("!play")
+    
+# voice command
+@bot.command(name='voice')
+async def voice_command(ctx, amount=None):
+    if not is_mod(ctx):
+        return
+    if not amount:
+        await ctx.send("/me Usage: !voice <0-2>")
+        return
+    try:
+        amount = int(amount)
+        change_voice(amount)
+        await ctx.send("/me Voice changed to " + str(amount))
+    except:
+        await ctx.send("/me Usage: !voice <0-2>")
+
+# command tts
+@bot.command(name='enabletts')
+async def tts_command(ctx):
+    global tts_enabled
+    if not is_mod(ctx):
+        return
+    tts_enabled = not tts_enabled
+    await ctx.send("/me TTS " + ("enabled" if tts_enabled else "disabled"))
 
 # command elo
 @bot.command(name='elo')
@@ -229,21 +255,7 @@ async def death_command(ctx, amount = None):
     else:
         deaths += 1
     await ctx.send(f"/me {ctx.author.channel.name} ist bisher {deaths} mal gestorben.")
-    
-# command to manually change api key
-@bot.command(name='api-key')
-async def api_key_command(ctx, key = None):
-    if is_mod(ctx):
-        global current_key
-        if key:
-            try:
-                current_key = int(key)
-            except:
-                await ctx.send(f"/me Invalid key")
-                return
-        await ctx.send(f"/me Changed api key to: {current_key}")
 
-    
 # environment variables for spotify
 load_dotenv()
 idSpotify = os.getenv("SPOTIFY_CLIENT_ID")
@@ -685,7 +697,6 @@ def success():
     fill_blacklist()
     deserialize_lurks()
     return "Du kannst den tab jetzt schließen"
-
 
 # run the flask app
 webbrowser.open("https://localhost:3000", new=0, autoraise=True)
