@@ -1,12 +1,9 @@
 from groq import Groq
 from BotpalUtils import get_system_prompt
-import os
 from dotenv import load_dotenv
 from BotpalTTS import read_out_text
 
 load_dotenv()
-ai_api_keys = [os.getenv("AI_KEY0"), os.getenv("AI_KEY1"), os.getenv("AI_KEY2"), os.getenv("AI_KEY3"), os.getenv("AI_KEY4")]
-current_key = 0
 
 # send request to AI API
 def chat_with_gpt(prompt, channel, user):

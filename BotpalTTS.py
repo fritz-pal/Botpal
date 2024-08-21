@@ -48,6 +48,9 @@ def read_out_text(text_to_speak):
     response = requests.post(tts_url, headers=headers, json=data, stream=True)
     global number
     OUTPUT_PATH = f"HistoryTTS/output{number}.mp3"
+    # create folder if it does not exist
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    
     if response.ok:
         with open(OUTPUT_PATH, "wb") as f:
             for chunk in response.iter_content(chunk_size=CHUNK_SIZE):

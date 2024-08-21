@@ -205,7 +205,7 @@ async def elo_command(ctx, name=None):
         data = response.json()
     else:
         if response.status_code == 404:
-            await ctx.send(f"/me 404 {subject} not found")
+            await ctx.send(f"/me {subject} not found")
             return
         print("Error:", response.status_code)
         await ctx.send("/me Something went wrong trying to reach the API")
