@@ -723,7 +723,6 @@ def deserialize_lurks():
     else:
         serialize_lurks()
         
-        
 # serialize the lurk dictionary
 def serialize_lurks():
     global lurks 
