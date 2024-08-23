@@ -1,3 +1,6 @@
+import re
+import unicodedata
+
 language = "de"
 
 # formats a time in seconds to a human readable format
@@ -39,13 +42,8 @@ def getTranslation(key):
         "stink": " stinkt!",
         "iam": ", ich bin Botpal",
         "hallo": "Hallo ",
-        "defaultResponse": "Ich bin ein Twitchbot namens Botpal. Ich bin allwissend und du kannst mich alles fragen.",
         "overloaded": "Ich bin gerade überfordert. Frag mich gleich nochmal.",
         "test": "/me Test erfolgreich",
-        "systemPrompt": "Du bist ein Twitch Chatbot namens Botpal und du bist allwissend. Antworte immer nur mit EINEM ganz kurzen Satz und auf DEUTSCH. Du bist im stream vom streamer ",
-        "systemPrompt2": " und der Zuschauer ",
-        "systemPrompt3": " stellt dir eine Frage.",
-        "allGood": "Mir geht es gut, danke der Nachfrage. Wie geht es dir ",
         "noSong": "Es wird gerade kein Song abgespielt.",
         "queue": "Die nächsten Songs sind",
         "skip": " möchte den Song skippen. ",
@@ -55,13 +53,8 @@ def getTranslation(key):
         "stink": " smells!",
         "iam": ", I am Botpal",
         "hallo": "Hello ",
-        "defaultResponse": "I am a twitchbot named Botpal. I am all-knowing and you can ask me anything.",
         "overloaded": "I am a bit overwhelmed. Ask me again in a moment.",
         "test": "/me Test successful",
-        "systemPrompt": "You are a Twitch chatbot named Botpal and you are all-knowing. Always respond with ONE very short sentence and in English. You are in the stream of the streamer ",
-        "systemPrompt2": " and the viewer ",
-        "systemPrompt3": " asks you a question.",
-        "allGood": "I am fine, thank you for asking. How are you ",
         "noSong": "Nothing is playing",
         "queue": "The next songs are",
         "skip": " wants to skip the song. ",
@@ -101,3 +94,21 @@ def is_vip(ctx):
         if attribute.startswith("vip=0"):
             return False
     return False
+
+# parse raw data and return if the message is the first message of the user
+def is_firstmsg(raw_data):
+    attributes = raw_data.split(";")
+    for attribute in attributes:
+        if attribute == "first-msg=1":
+            return True
+        if attribute == "first-msg=0":
+            return False
+    return False
+
+# check if the message contains disallowed words
+def contains_disallowed(text):
+    text = unicodedata.normalize('NFD', text).lower()
+    text = ''.join(c for c in text if not unicodedata.combining(c))
+
+    banned_words = ["viewer", "zuschauer", "viewers", "views", "buy", "follower", "best", "free", "sell"]
+    return any(word in text for word in banned_words) or bool(re.findall(r"[A-Z|a-z]+\.[A-Z|a-z]{1,3}\b", text))

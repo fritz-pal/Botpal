@@ -13,7 +13,7 @@ import threading
 import webbrowser
 import pickle
 from AnswersAI import answer_question
-from BotpalUtils import get_alertus, time_format, getTranslation, is_question, is_mod, is_vip, language
+from BotpalUtils import get_alertus, time_format, getTranslation, is_question, is_mod, is_vip, language, is_firstmsg, contains_disallowed
 from BotpalTTS import change_voice
 
 # https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=4rbssd4gv3vpwike8d0jjl29v41t19&redirect_uri=https://localhost:3000&scope=channel%3Abot+channel%3Amanage%3Amoderators+channel%3Amanage%3Aredemptions
@@ -43,6 +43,7 @@ twitch_client_tokens = {"lordzaros_": os.getenv("TWITCH_TOKEN_ZAROS")}
 channel_ids = {}
 blacklist = []
 blacklistedUsers = []
+bot_user_id = "1120790066"
     
 # create the bot
 bot = commands.Bot(
@@ -87,11 +88,30 @@ async def event_message(message: Message):
         return
     
     # print the message to the console
-    print("chat:(" + message.author.channel.name + ") " + message.author.name,":", message.content)
+    print("(" + message.author.channel.name + ") " + message.author.name,":", message.content)
     
-    # 1% chance to tell someone they stink
-    if random.random() < 0.002:
-        await message.channel.send("@" + message.author.name + getTranslation("stink"))
+    # check if first message and respond with greeting or ban user if bot
+    if is_firstmsg(message.raw_data):
+        if contains_disallowed(message.content):
+            ban_user(message.author.name, message.author.channel.name, "bot")
+            return
+        else:
+            await message.channel.send("hi " + message.author.name + " " + get_alertus(message.author.channel.name))
+        
+    # check if chatter was lurking and respond with the time
+    if message.author.name in lurks:
+        lurktime = time_format(round(time.time() - lurks[message.author.name]))
+        if lurktime:
+            await message.channel.send("/me " + message.author.name + " war " + lurktime + " im lurk!")
+            lurks.pop(message.author.name)
+            serialize_lurks()
+    
+    # check if klonoa is on the toilet and respond with the time
+    global klonoa
+    if message.author.name == "klonoaofthewind":
+        if klonoa > 0:
+            await message.channel.send("/me Klonoa war " + time_format(round(time.time() - klonoa)) + " auf dem Klo")
+            klonoa = 0
         
     # check if the message is a greeting and respond with troll
     match = re.search(regex_pattern, message.content.lower())
@@ -108,25 +128,16 @@ async def event_message(message: Message):
                 else:
                     name.append(word)
             await message.channel.send(getTranslation("hallo") + " ".join(name) + getTranslation("iam"))
+            return
 
     # check if the message is a question and respond with the AI
     if ("botpal" in message.content.lower() or "fritzbot" in message.content.lower()) and is_question(message.content.lower()):
         await answer_question(message, getTranslation, get_alertus, tts_enabled)
-    
-    # check if klonoa is on the toilet and respond with the time
-    global klonoa
-    if message.author.name == "klonoaofthewind":
-        if klonoa > 0:
-            await message.channel.send("/me Klonoa war " + time_format(round(time.time() - klonoa)) + " auf dem Klo")
-            klonoa = 0
-    
-    # check if chatter was lurking and respond with the time
-    if message.author.name in lurks:
-        lurktime = time_format(round(time.time() - lurks[message.author.name]))
-        if lurktime:
-            await message.channel.send("/me " + message.author.name + " war " + lurktime + " im lurk!")
-            lurks.pop(message.author.name)
-            serialize_lurks()
+        return
+        
+    # 1% chance to tell someone they stink
+    if random.random() < 0.002:
+        await message.channel.send("@" + message.author.name + getTranslation("stink"))
         
     # echo emotes
     if message.author.name == "streamelements" and message.content == "DieStimmen":
@@ -255,6 +266,20 @@ async def death_command(ctx, amount = None):
     else:
         deaths += 1
     await ctx.send(f"/me {ctx.author.channel.name} ist bisher {deaths} mal gestorben.")
+    
+# ban user in channel
+def ban_user(user, channel, reason):
+    user_id = requests.get("https://api.twitch.tv/helix/users?login=" + user, headers=get_twitch_headers())
+    if user_id.status_code != 200:
+        print("Error retrieving id:", user_id.json())
+        return
+    data = {"data": {"user_id": user_id.json()["data"][0]["id"], "reason": reason}}
+    print(data)
+    response = requests.post(f"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={channel_ids[channel]}&moderator_id={bot_user_id}", headers=get_twitch_headers(), json=data)
+    if response.status_code == 200:
+        print(f"Banned {user}")
+    else:
+        print("Error banning:", response.json())
 
 # environment variables for spotify
 load_dotenv()

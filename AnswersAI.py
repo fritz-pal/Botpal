@@ -64,20 +64,13 @@ async def answer_question(message, getTranslation, get_alertus, tts_enabled):
             send = send[:send.index(char)].strip()
             changed = True
     
-    # send default response if the response if the ai is introducing itself
-    if ("ich bin" in send.lower() or "i am" in send.lower() or "i'm" in send.lower()) and "botpal" in send.lower():
-        send = getTranslation("defaultResponse")
-        changed = True
+    # read out the response if TTS is enabled
+    if tts_enabled:
+        read_out_text(send)
         
-    # replace "alles in ordnung"
-    if "alles in ordnung" in send.lower():
-        send = getTranslation("allGood") + "@" + message.author.name + "?"
-        changed = True
-    
     # add the alertus emoji to the response at the end if it was modified
     if changed:
         send = send + " " + get_alertus(message.author.channel.name)
         print("original: " + unchanged)
     await message.channel.send(send)
-    if tts_enabled:
-        read_out_text(send)
+    
