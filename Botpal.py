@@ -112,7 +112,10 @@ async def event_message(message: Message):
         if klonoa > 0:
             await message.channel.send("/me Klonoa war " + time_format(round(time.time() - klonoa)) + " auf dem Klo")
             klonoa = 0
-        
+    
+    if "stimki" in message.content:
+        await message.channel.send("@" + message.author.name + " selber")
+    
     # check if the message is a greeting and respond with troll
     match = re.search(regex_pattern, message.content.lower())
     if match:
