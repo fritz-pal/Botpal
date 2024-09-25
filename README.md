@@ -19,11 +19,11 @@ TWITCH_CLIENT_SECRET=""
 
 FLASK_SECRET_KEY="" # random string
 
-AI_KEY0="" # api keys for aimlapi.com (5 because one of them can only process 10 requests per hour)
-AI_KEY1=""
-AI_KEY2=""
-AI_KEY3=""
-AI_KEY4=""
+WEATHER_API_KEY="" # from https://www.weatherapi.com/
+
+GROQ_API_KEY="" # from https://console.groq.com/keys
+
+TTS_KEY="" # from https://elevenlabs.io/
 
 TWITCH_TOKEN_...="" # twitch token of your own channel created using the link in the comment at the top of the file while logged into your own account
 
@@ -34,7 +34,6 @@ REWARD_ID="" # keep empty if not affiliate
 ## All twitch commands:
 ### User commands
 - !test: Sends a test message.
-- !klo: Notifies that Klonoa needs to go to the bathroom.
 - !lurk: Notifies that the user is lurking.
 - !elo: Retrieves the rapid elo rating of a player.
 - !mods: Retrieves the list of moderators.
@@ -46,7 +45,8 @@ REWARD_ID="" # keep empty if not affiliate
 
 ### Mod commands:
 - !blacklist or !blacklistsong: Adds a song to the blacklist.
+- !blacklistartist: Adds an artist to the blacklist.
+- !blacklistuser: Bans a user from song requests.
 - !forceskip: Forces the skipping of the current song.
 - !volume or !vol: Changes the volume of the music.
-- !api-key: Manually changes the API key.
 - !createreward: Creates the custom reward for song requests return the ID to be put into the environment variable.

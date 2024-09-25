@@ -12,7 +12,7 @@ from flask import Flask, redirect, request, jsonify, session
 import threading
 import webbrowser
 import pickle
-from AnswersAI import answer_question
+from AnswersAI import answer_question, add_prompt
 from BotpalUtils import get_alertus, time_format, getTranslation, is_question, is_mod, is_vip, language, is_firstmsg, contains_disallowed
 from BotpalTTS import change_voice
 
@@ -27,6 +27,7 @@ twitch_token = os.getenv("TWITCH_TOKEN")
 twitch_client_id = os.getenv("TWITCH_CLIENT_ID")
 twitch_client_secret = os.getenv("TWITCH_CLIENT_SECRET")
 reward_id = os.getenv("REWARD_ID")
+reward_id_prompt = os.getenv("REWARD_ID_PROMPT")
 weather_key = os.getenv("WEATHER_API_KEY")
 
 # variables
@@ -80,12 +81,21 @@ async def event_message(message: Message):
         return
     
     # check if the message is a redemption of the songrequest reward
-    if is_redemption(message.raw_data):
-        if message.author.name in blacklistedUsers:
-            await message.channel.send("@" + message.author.name + " du bist permanent vom Songrequest ausgeschlossen")
+    isRedemption, reward = is_redemption(message.raw_data)
+    global reward_id_prompt, reward_id
+    if isRedemption:
+        if reward == reward_id:
+            if message.author.name in blacklistedUsers:
+                await message.channel.send("@" + message.author.name + " du bist permanent vom Songrequest ausgeschlossen")
+                return
+            await process_redeem(message.content, message.channel)
             return
-        await process_redeem(message.content, message.channel)
-        return
+        elif reward == reward_id_prompt:
+            if message.author.name in blacklistedUsers:
+                await message.channel.send("@" + message.author.name + " du bist permanent von allen Botpal Aktionen ausgeschlossen")
+                return
+            await process_redeem_prompt(message.content, message.channel)
+            return
     
     # print the message to the console
     print("(" + message.author.channel.name + ") " + message.author.name,":", message.content)
@@ -280,6 +290,18 @@ def ban_user(user, channel, reason):
         print(f"Banned {user}")
     else:
         print("Error banning:", response.json())
+        
+# process the redemption of the botpal ai prompt extension reward
+async def process_redeem_prompt(prompt, channel):
+    if not prompt:
+        await channel.send("/me Kein prompt")
+        return
+    if len(prompt) > 150 or len(prompt) < 10:
+        await channel.send("/me Prompt muss 10-150 Zeichen lang sein")
+        return
+    add_prompt(prompt)
+    await channel.send("/me Prompt hinzugefügt")
+    
 
 # environment variables for spotify
 load_dotenv()
@@ -649,8 +671,10 @@ def is_redemption(raw_data):
     global reward_id
     for attribute in attributes:
         if "custom-reward-id=" + reward_id == attribute:
-            return True
-    return False
+            return (True, reward_id)
+        if "custom-reward-id=" + reward_id_prompt == attribute:
+            return (True, reward_id_prompt)
+    return (False, None)
 
 # bot command to force skip as mod
 @bot.command(name='forceskip')
