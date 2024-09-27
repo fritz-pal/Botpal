@@ -297,7 +297,7 @@ async def process_redeem_prompt(prompt, channel):
         await channel.send("/me Kein prompt")
         return
     if len(prompt) > 150 or len(prompt) < 10:
-        await channel.send("/me Prompt muss 10-150 Zeichen lang sein")
+        await channel.send("/me Prompt muss zwischen 10-150 Zeichen lang sein")
         return
     add_prompt(prompt)
     await channel.send("/me Prompt hinzugefügt")
@@ -509,7 +509,13 @@ async def createreward_command(ctx):
         await ctx.send("/me Error creating reward")
         return
     await ctx.send("/me Reward successfully created: " + reward["data"][0]["id"])
-
+    
+@bot.command(name='addprompt')
+async def addprompt_command(ctx, *, prompt):
+    if not is_mod(ctx):
+        return
+    await process_redeem_prompt(prompt, ctx.author.channel)
+    
 # bot command to see mods
 @bot.command(name='mods')
 async def mods_command(ctx):

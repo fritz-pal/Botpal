@@ -1,7 +1,9 @@
 from groq import Groq
+import time
 from BotpalUtils import get_system_prompt
 from dotenv import load_dotenv
 from BotpalTTS import read_out_text
+
 
 load_dotenv()
 prompt_queue = []
@@ -9,18 +11,20 @@ prompt_queue = []
 # add a prompt to the queue
 def add_prompt(prompt):
     prompt_queue.append(prompt)
-    if len(prompt_queue) > 5:
+    if len(prompt_queue) > 3:
         prompt_queue.pop(0)
 
 # send request to AI API
 def chat_with_gpt(prompt, channel, user):
-    
     global prompt_queue
     systemprompt = get_system_prompt(channel, user)
     if len(prompt_queue) > 0:
         systemprompt += " Aber das allerwichtigste ist: "
-    for prompt in prompt_queue:
-        systemprompt += prompt + " "
+    for p in prompt_queue:
+        if not p.endswith(".") and not p.endswith("!") and not p.endswith("?"):
+            p += "."
+        p = p[0].upper() + p[1:]
+        systemprompt += p + " "
     systemprompt = systemprompt.strip()
     
     client = Groq()
