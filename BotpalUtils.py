@@ -30,10 +30,8 @@ def is_question(text):
 def get_alertus(channel):
     if channel == "haplolp":
         return "haplolALERTUs"
-    if channel == "klonoaofthewind" or channel == "b1gf1sch":
+    if channel == "klonoaofthewind" or channel == "b1gf1sch" or channel == "fritzpal" or channel == "lordzaros_":
         return "ALERTUS"
-    if channel == "fritzpal" or channel == "lordzaros_":
-        return "ALERTUs"
     return "🚨"
 
 # translations
