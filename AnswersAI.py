@@ -8,6 +8,9 @@ from BotpalTTS import read_out_text
 load_dotenv()
 prompt_queue = []
 
+msg_queue = []
+current_user = None
+
 # add a prompt to the queue
 def add_prompt(prompt):
     prompt_queue.append(prompt)
@@ -15,7 +18,7 @@ def add_prompt(prompt):
         prompt_queue.pop(0)
 
 # send request to AI API
-def chat_with_gpt(prompt, channel, user):
+def chat_with_gpt(msg_queue, channel, user):
     global prompt_queue
     systemprompt = get_system_prompt(channel, user)
     if len(prompt_queue) > 0:
@@ -29,11 +32,9 @@ def chat_with_gpt(prompt, channel, user):
     
     client = Groq()
     completion = client.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[
-            {"role": "system", "content": systemprompt},
-            {"role": "user", "content": prompt},
-        ],
+        model="llama-3.1-8b-instant",
+        # model="llama3-8b-8192",
+        messages=[{"role": "system", "content": systemprompt}] + msg_queue,
         temperature=1,
         max_tokens=1024,
         top_p=1,
@@ -52,8 +53,15 @@ async def answer_question(message, getTranslation, get_alertus, tts_enabled):
     # replace the bot name with Botpal
     prompt = message.content.lower().replace("@fritzbotpal", "Botpal").replace("fritzbotpal", "Botpal").replace("fritzbot", "Botpal").replace("botpal", "Botpal").strip()
     print("prompt: " + prompt)
+    
+    global current_user, msg_queue
+    if current_user != message.author.name:
+        msg_queue.clear()
+    current_user = message.author.name
+    msg_queue.append({"role": "user", "content": prompt})
+    
     try:
-        response = chat_with_gpt(prompt, message.author.channel.name, message.author.name)
+        response = chat_with_gpt(msg_queue, message.author.channel.name, message.author.name)
     except Exception as e:
         # send error message if the AI is overloaded change the key
         print("Error:", e)            
@@ -84,6 +92,8 @@ async def answer_question(message, getTranslation, get_alertus, tts_enabled):
             send = send[:send.index(char)].strip()
             changed = True
     
+    msg_queue.append({"role": "assistant", "content": send})
+
     # read out the response if TTS is enabled
     if tts_enabled:
         read_out_text(send)
