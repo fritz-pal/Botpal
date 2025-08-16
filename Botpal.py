@@ -36,7 +36,7 @@ deaths = 0
 tts_enabled = False
 whoWantsSkip = []
 whenSkip = 0
-listOfIms = ["ich bin ein ", "i'm a ", "i am an ", "i am the ", "ich bin der ", "i'm the ", "im the ", "i am the ", "ich bin die ", "i bims der ", "i bims ", "ich heiße ", "i'm called ", "i'm named ", "i'm known as ", "mein name ist ", "i am ", "ich bin ", "i'm "]
+listOfIms = ["ich bin ein ", "i am the ", "ich bin der ", "i'm the ", "i am the ", "ich bin die ", "i bims der ", "i bims ", "ich heiße ", "i'm called ", "i'm named ", "i'm known as ", "mein name ist ", "ich bin ", "i'm "]
 regex_pattern = "|".join(map(re.escape, listOfIms))
 channels = ["lordzaros_"]
 lurks = {}
@@ -141,8 +141,9 @@ async def event_message(message: Message):
             return
 
     # check if the message is a question and respond with the AI
-    if ("botpal" in message.content.lower() or "fritzbot" in message.content.lower()) and is_question(message.content.lower()):
-        await answer_question(message, getTranslation, get_alertus, tts_enabled)
+    if ("botpal" in message.content.lower() or "fritzbot" in message.content.lower()): #and is_question(message.content.lower()):
+        info = await get_stream_info(message.author.channel.name)
+        await answer_question(message, getTranslation, get_alertus, tts_enabled, info)
         return
         
     # 1% chance to tell someone they stink
@@ -427,19 +428,23 @@ def skip_song():
     get_spotify().next_track(device_id)
     return True
 
-# get view count of a channel
-def get_view_count(channel):
-    global channel_ids
-    response = requests.get("https://api.twitch.tv/helix/streams?user_id=" + channel_ids[channel], headers=get_twitch_headers())
+# get current stream info -> none if not live
+async def get_stream_info(channel_name):
+    headers = get_twitch_headers()
+    response = requests.get(f"https://api.twitch.tv/helix/streams?user_login={channel_name}", headers=headers)
+    # print(response.json())
     if response.status_code == 200:
         data = response.json()
-        if data["data"]:
-            return data["data"][0]["viewer_count"]
-        return 0
+        return data["data"][0] if data["data"] else None
     else:
-        print("Error:", response.status_code)
-        return 0
-        
+        print("Error:", response.status_code, response.json())
+        return None
+    
+# get view count of a channel
+def get_view_count(channel):
+    response = get_stream_info(channel)
+    return response["viewer_count"] if response else 0
+
 # get all mods of a channel
 def get_mods(channel):
     response = requests.get("https://api.twitch.tv/helix/moderation/moderators?broadcaster_id=" + channel_ids[channel], headers=get_twitch_client_headers(channel))

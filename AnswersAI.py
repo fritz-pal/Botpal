@@ -1,5 +1,4 @@
 from groq import Groq
-import time
 from BotpalUtils import get_system_prompt
 from dotenv import load_dotenv
 from BotpalTTS import read_out_text
@@ -18,9 +17,8 @@ def add_prompt(prompt):
         prompt_queue.pop(0)
 
 # send request to AI API
-def chat_with_gpt(msg_queue, channel, user):
+def chat_with_gpt(msg_queue, systemprompt):
     global prompt_queue
-    systemprompt = get_system_prompt(channel, user)
     if len(prompt_queue) > 0:
         systemprompt += " Aber das allerwichtigste ist: "
     for p in prompt_queue:
@@ -49,7 +47,7 @@ def chat_with_gpt(msg_queue, channel, user):
     return response
 
 # answer the question of the given message using the AI
-async def answer_question(message, getTranslation, get_alertus, tts_enabled):
+async def answer_question(message, getTranslation, get_alertus, tts_enabled, info):
     # replace the bot name with Botpal
     prompt = message.content.lower().replace("@fritzbotpal", "Botpal").replace("fritzbotpal", "Botpal").replace("fritzbot", "Botpal").replace("botpal", "Botpal").strip()
     print("prompt: " + prompt)
@@ -59,9 +57,11 @@ async def answer_question(message, getTranslation, get_alertus, tts_enabled):
         msg_queue.clear()
     current_user = message.author.name
     msg_queue.append({"role": "user", "content": prompt})
+
+    systemprompt = get_system_prompt(info["game_name"], info["user_name"], message.author.name) if info else get_system_prompt("", message.author.channel.name, message.author.name)
     
     try:
-        response = chat_with_gpt(msg_queue, message.author.channel.name, message.author.name)
+        response = chat_with_gpt(msg_queue, systemprompt)
     except Exception as e:
         # send error message if the AI is overloaded change the key
         print("Error:", e)            
