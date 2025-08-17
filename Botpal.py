@@ -145,9 +145,9 @@ async def event_message(message: Message):
         info = await get_stream_info(message.author.channel.name)
         await answer_question(message, getTranslation, get_alertus, tts_enabled, info)
         return
-        
-    # 1% chance to tell someone they stink
-    if random.random() < 0.002:
+
+    # 0.1% chance to tell someone they stink
+    if random.random() < 0.001:
         await message.channel.send("@" + message.author.name + getTranslation("stink"))
         
     # echo emotes

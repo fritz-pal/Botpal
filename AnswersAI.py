@@ -8,7 +8,6 @@ load_dotenv()
 prompt_queue = []
 
 msg_queue = []
-current_user = None
 
 # add a prompt to the queue
 def add_prompt(prompt):
@@ -52,10 +51,9 @@ async def answer_question(message, getTranslation, get_alertus, tts_enabled, inf
     prompt = message.content.lower().replace("@fritzbotpal", "Botpal").replace("fritzbotpal", "Botpal").replace("fritzbot", "Botpal").replace("botpal", "Botpal").strip()
     print("prompt: " + prompt)
     
-    global current_user, msg_queue
-    if current_user != message.author.name:
-        msg_queue.clear()
-    current_user = message.author.name
+    global msg_queue
+    if len(msg_queue) > 20:
+        msg_queue = msg_queue[2:]
     msg_queue.append({"role": "user", "content": prompt})
 
     systemprompt = get_system_prompt(info["game_name"], info["user_name"], message.author.name) if info else get_system_prompt("", message.author.channel.name, message.author.name)
