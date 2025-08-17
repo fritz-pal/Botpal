@@ -108,5 +108,5 @@ def contains_disallowed(text):
     text = unicodedata.normalize('NFD', text).lower()
     text = ''.join(c for c in text if not unicodedata.combining(c))
 
-    banned_words = ["https", "cheap", "buy", "free", "sell", ".com", "commision", "***", "commission", "giveaway"]
-    return any(word in text for word in banned_words) or bool(re.findall(r"[A-Z|a-z]+[A-Z|a-z]+\.[com|de|net|org|io|co|info|ru|cn|edu|gov|xyz|ly|at|ch|us]\b", text))
+    banned_words = ["https", "cheap", "buy", "free", "sell", ".com", "commision", "***", "commission", "giveaway", "dot com"]
+    return any(word in text for word in banned_words) or bool(re.findall(r"[A-Z|a-z]+[A-Z|a-z]+\.[com|de|net|org|io|co|info|ru|cn|xyz|ly|at|ch|us]\b", text))
