@@ -38,9 +38,9 @@ whoWantsSkip = []
 whenSkip = 0
 listOfIms = ["ich bin ein ", "i am the ", "ich bin der ", "i'm the ", "i am the ", "ich bin die ", "i bims der ", "i bims ", "ich heiße ", "i'm called ", "i'm named ", "i'm known as ", "mein name ist ", "ich bin ", "i'm "]
 regex_pattern = "|".join(map(re.escape, listOfIms))
-channels = ["lordzaros_"]
+channels = ["zaroooos"]
 lurks = {}
-twitch_client_tokens = {"lordzaros_": os.getenv("TWITCH_TOKEN_ZAROS")}
+twitch_client_tokens = {"zaroooos": os.getenv("TWITCH_TOKEN_ZAROS")}
 channel_ids = {}
 blacklist = []
 blacklistedUsers = []
@@ -313,7 +313,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 
 # links for spotify
-redirect_uri = "https://localhost:3000/callback"
+redirect_uri = "https://127.0.0.1:3000/callback"
 auth_url = "https://accounts.spotify.com/authorize"
 token_url = "https://accounts.spotify.com/api/token"
 api_base_url = "https://api.spotify.com/v1"
