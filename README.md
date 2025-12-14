@@ -6,7 +6,7 @@
 ## to install:
  - install libraries using "pip install -r requirements.txt"
  - create .env file with all necessary environment variables in format:
- - replace lordzaros_ with your own channel in the channel and twitch tokens variables
+ - replace zaroooos with your own channel in the channel and twitch tokens variables
  - run bot
  - run !createreward command in your twitch chat and copy the returned ID into the .env
 

@@ -803,7 +803,7 @@ def success():
     return "Du kannst den tab jetzt schließen"
 
 # run the flask app
-webbrowser.open("https://localhost:3000", new=0, autoraise=True)
+webbrowser.open("https://127.0.0.1:3000", new=0, autoraise=True)
 app.run(host="0.0.0.0", port=3000, debug=False, ssl_context="adhoc")
     
           
